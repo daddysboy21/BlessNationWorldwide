@@ -30,6 +30,22 @@ mongoose.connect('mongodb://localhost:27017/test', { useNewUrlParser: true, useU
 // Create a WebSocket server
 const wss = new WebSocket.Server({ noServer: true });
 
+// WebSocket connection to send real-time updates
+wss.on('connection', ws => {
+  ws.on('message', message => {
+      // If a new vote is created, send the updated vote counts to all clients
+      if (message === 'new vote') {
+          Vote.find().then(votes => {
+              wss.clients.forEach(client => {
+                  if (client.readyState === WebSocket.OPEN) {
+                      client.send(JSON.stringify(votes));
+                  }
+              });
+          });
+      }
+  });
+});
+
 app.post('/votes', async (req, res) => {
   const { option } = req.body;
   try {
@@ -38,6 +54,7 @@ app.post('/votes', async (req, res) => {
       { $inc: { count: 1 } },
       { new: true, upsert: true }
     );
+    res.json(vote);
 
     // Broadcast the updated vote to all connected clients
     wss.clients.forEach(client => {
