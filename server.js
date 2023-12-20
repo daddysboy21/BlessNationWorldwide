@@ -28,7 +28,16 @@ mongoose.connect('mongodb://localhost:27017/test', { useNewUrlParser: true, useU
   .catch(err => console.log('Database connection error', err));
 
 // Create a WebSocket server
-const wss = new WebSocket.Server({ noServer: true });
+const wss = new WebSocket.Server({ server });
+server.on('upgrade', (request, socket, head) => {
+  wss.handleUpgrade(request, socket, head, ws => {
+    wss.emit('connection', ws, request);
+  });
+});
+
+server.listen(5500, () => {
+  console.log('Server is running on port 5500');
+});
 
 // WebSocket connection to send real-time updates
 wss.on('connection', ws => {
@@ -81,7 +90,10 @@ app.get('/votes', async (_req, res) => {
 
 //SERVER STARTER
 const port = 5500;
-const server = app.listen(port, '0.0.0.0', () => console.log(`Server started on port ${port}`));
+const server = require('http').createServer(app);
+server.listen(port, '0.0.0.0', () => {
+  console.log(`Server started on port ${port}`);
+});
 
 // Handle WebSocket requests
 server.on('upgrade', (request, socket, head) => {
